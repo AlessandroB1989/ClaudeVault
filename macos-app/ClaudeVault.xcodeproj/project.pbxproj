@@ -77,6 +77,7 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 2660;
+				ORGANIZATIONNAME = "baair solutions";
 				TargetAttributes = {
 					AA0000000000000000000004 = {
 						CreatedOnToolsVersion = 16.0;
