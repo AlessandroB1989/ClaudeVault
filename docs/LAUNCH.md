@@ -1,7 +1,7 @@
 # Kit de lancement — ClaudeVault
 
 Tout le prêt-à-copier pour publier ClaudeVault et le faire remarquer.
-Remplace `TON-USER` par ton pseudo GitHub une fois le repo créé.
+Remplace `AlessandroB1989` par ton pseudo GitHub une fois le repo créé.
 
 ---
 
@@ -27,7 +27,7 @@ Topics GitHub suggérés : `mcp` `model-context-protocol` `claude` `macos` `swif
 Ligne à ajouter (section Knowledge / Memory) :
 
 ```markdown
-- [ClaudeVault](https://github.com/TON-USER/ClaudeVault) 🍎 — Native macOS
+- [ClaudeVault](https://github.com/AlessandroB1989/ClaudeVault) 🍎 — Native macOS
   second-brain for Claude: isolated per-profile memory + Keychain-backed API key
   vault, installable as a one-click Desktop Extension (.mcpb).
 ```
@@ -70,7 +70,7 @@ Sous le capot :
 **4/**
 100 % local, zéro cloud. Multi-utilisateur (chaque session macOS a son vault).
 
-Repo 👉 github.com/TON-USER/ClaudeVault
+Repo 👉 github.com/AlessandroB1989/ClaudeVault
 Retours bienvenus 🙏 #MCP #Claude #buildinpublic
 
 ---
@@ -90,7 +90,7 @@ Retours bienvenus 🙏 #MCP #Claude #buildinpublic
 > extension Desktop installable en un clic.
 >
 > C'est sous licence MIT, les contributions sont bienvenues 👇
-> github.com/TON-USER/ClaudeVault
+> github.com/AlessandroB1989/ClaudeVault
 >
 > #MCP #Claude #macOS #OpenSource #IA
 
