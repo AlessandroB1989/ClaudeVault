@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "claudevault": {
+      "command": "node",
+      "args": ["/CHEMIN/VERS/ClaudeVault/mcp-server/build/index.js"]
+    }
+  }
+}

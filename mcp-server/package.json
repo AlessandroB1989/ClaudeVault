@@ -1,0 +1,39 @@
+{
+  "name": "claudevault-mcp",
+  "version": "1.0.0",
+  "description": "Serveur MCP ClaudeVault — mémoire par profil (second brain) pour Claude Desktop et Claude Code.",
+  "type": "module",
+  "bin": {
+    "claudevault-mcp": "build/index.js"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', 0o755)\"",
+    "watch": "tsc --watch",
+    "start": "node build/index.js",
+    "test": "node --test test/*.test.js",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "claude",
+    "memory",
+    "second-brain"
+  ],
+  "author": "Alexandre Bruneau",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

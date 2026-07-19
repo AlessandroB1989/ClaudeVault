@@ -1,0 +1,36 @@
+{
+  "dxt_version": "0.1",
+  "name": "claudevault",
+  "display_name": "ClaudeVault",
+  "version": "1.0.0",
+  "description": "Mémoire par profil (second brain) pour Claude, avec vault de clés API dans le Keychain macOS.",
+  "long_description": "ClaudeVault expose à Claude une mémoire isolée par profil (Business IA, Voyages, Écriture, Code…). Chaque profil a son dossier de fichiers .md et un fichier memory.md condensé (~5000 tokens max) pour éviter de polluer le contexte. Un vault unique de clés API, stocké dans le Keychain macOS, est partagé entre tous les profils.",
+  "author": {
+    "name": "Alexandre Bruneau"
+  },
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "build/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/build/index.js"]
+    }
+  },
+  "tools": [
+    { "name": "list_profiles", "description": "Liste les profils disponibles." },
+    { "name": "set_active_profile", "description": "Définit le profil actif de la session." },
+    { "name": "read_memory", "description": "Lit la mémoire condensée memory.md (prioritaire)." },
+    { "name": "read_notes", "description": "Lit les notes brutes .md du profil." },
+    { "name": "write_note", "description": "Crée/modifie une note .md." },
+    { "name": "update_profile_memory", "description": "Ajoute un résumé condensé à memory.md (limite ~5000 tokens)." },
+    { "name": "get_api_key", "description": "Récupère une clé API depuis le Keychain macOS." }
+  ],
+  "keywords": ["claude", "mcp", "memory", "second-brain", "keychain"],
+  "compatibility": {
+    "platforms": ["darwin"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}

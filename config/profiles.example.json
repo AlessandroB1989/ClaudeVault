@@ -1,0 +1,25 @@
+{
+  "profiles": [
+    {
+      "id": "business-ia",
+      "name": "Business IA",
+      "path": "/Users/alexandrebruneau/Vault/Business-IA",
+      "description": "Projets SaaS, clients, roadmap produit",
+      "memoryFile": "memory.md"
+    },
+    {
+      "id": "voyages",
+      "name": "Voyages",
+      "path": "/Users/alexandrebruneau/Vault/Voyages",
+      "description": "Carnets de voyage, preferences, projets de voyage",
+      "memoryFile": "memory.md"
+    },
+    {
+      "id": "ecriture",
+      "name": "Ecriture",
+      "path": "/Users/alexandrebruneau/Vault/Ecriture",
+      "description": "Projets d'ecriture, idees, brouillons",
+      "memoryFile": "memory.md"
+    }
+  ]
+}

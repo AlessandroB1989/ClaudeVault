@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Node / MCP server
+mcp-server/node_modules/
+mcp-server/build/
+*.log
+
+# Bundles générés
+*.dxt
+*.mcpb
+dist/
+
+# Xcode
+macos-app/**/xcuserdata/
+macos-app/**/*.xcuserstate
+macos-app/build/
+DerivedData/
+*.moved-aside
