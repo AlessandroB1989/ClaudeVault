@@ -32,11 +32,20 @@ Tout est **100 % local** : aucun cloud, aucune synchronisation externe.
 
 ### 1. Installer l'app ClaudeVault
 
-- Ouvrez `macos-app/ClaudeVault.xcodeproj` dans **Xcode**.
-- Onglet **Signing & Capabilities** → dans **Team**, choisissez votre compte Apple
-  (un compte **gratuit** suffit).
-- Appuyez sur **▶︎ Run** (ou `Cmd+R`). L'app se lance ; glissez-la ensuite dans
-  **Applications** pour la garder.
+**Option A — Télécharger le `.dmg` (le plus simple)**
+
+- Récupérez `ClaudeVault.dmg` depuis la page
+  [Releases](https://github.com/AlessandroB1989/ClaudeVault/releases).
+- Ouvrez-le, glissez **ClaudeVault** dans **Applications**.
+- Au **premier lancement** : clic droit sur l'app → **Ouvrir** → **Ouvrir**
+  (l'app est signée ad-hoc mais pas notarisée ; cette étape n'est nécessaire
+  qu'une fois).
+
+**Option B — Compiler depuis les sources**
+
+- Ouvrez `macos-app/ClaudeVault.xcodeproj` dans **Xcode**, puis **▶︎ Run** (`Cmd+R`).
+- Ou en ligne de commande : `bash macos-app/scripts/build-dmg.sh` → génère
+  `dist/ClaudeVault.dmg`.
 
 > À la première ouverture, macOS demande Touch ID ou votre mot de passe de session :
 > c'est le verrou de ClaudeVault.

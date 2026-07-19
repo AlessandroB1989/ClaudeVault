@@ -19,9 +19,15 @@ DMG_OUT="../dist/${APP_NAME}.dmg"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "../dist"
 
+# Si Xcode n'est pas l'outil par défaut (xcode-select → CommandLineTools),
+# on le pointe le temps du build, sans sudo.
+if ! xcodebuild -version >/dev/null 2>&1 && [ -d /Applications/Xcode.app ]; then
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
+
 echo "▶︎ Build (${CONFIG})…"
-# CODE_SIGNING_ALLOWED=NO → build local sans compte/notarisation.
-# Retire cette ligne (et laisse la signature auto) si tu as un compte développeur.
+# Signature ad-hoc ("-") : l'app se lance en local sur Apple Silicon sans compte
+# développeur. Pour distribuer largement, remplace par un Developer ID + notarise.
 xcodebuild \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
@@ -29,8 +35,10 @@ xcodebuild \
   -derivedDataPath "$BUILD_DIR/dd" \
   CONFIGURATION_BUILD_DIR="$PWD/$BUILD_DIR/app" \
   CODE_SIGN_IDENTITY="-" \
+  CODE_SIGN_STYLE=Manual \
+  DEVELOPMENT_TEAM="" \
   CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_ALLOWED=YES \
   build
 
 APP_PATH="$BUILD_DIR/app/${APP_NAME}.app"
