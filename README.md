@@ -161,3 +161,13 @@ Prérequis : macOS 14+, Node 18+, Xcode 16+ (pour builder l'app).
 - Les clés API sont dans le Keychain, pas dans des fichiers. L'option d'accès large
   (`-A`) évite les pop-ups répétées ; retirez-la si vous préférez confirmer chaque
   accès (voir `KeychainService.swift`).
+
+---
+
+## Licence & mentions
+
+Sous licence [MIT](LICENSE).
+
+> **Non affilié à Anthropic.** ClaudeVault est un projet indépendant, open source,
+> qui s'interface avec Claude via le protocole MCP. « Claude » et « Anthropic » sont
+> des marques d'Anthropic, PBC, utilisées ici à des fins descriptives uniquement.
