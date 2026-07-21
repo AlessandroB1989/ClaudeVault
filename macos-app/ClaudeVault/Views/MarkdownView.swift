@@ -46,6 +46,19 @@ struct MarkdownView: View {
                 inline(text).fixedSize(horizontal: false, vertical: true)
             }
 
+        case .task(let checked, let text):
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: checked ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(checked ? Color.accentColor : Color.secondary)
+                inline(text)
+                    .strikethrough(checked, color: .secondary)
+                    .foregroundStyle(checked ? Color.secondary : Color.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+        case .table(let header, let rows):
+            tableView(header: header, rows: rows)
+
         case .quote(let text):
             HStack(spacing: 8) {
                 Rectangle().fill(.tint).frame(width: 3)
@@ -65,6 +78,31 @@ struct MarkdownView: View {
         case .rule:
             Divider().padding(.vertical, 4)
         }
+    }
+
+    @ViewBuilder
+    private func tableView(header: [String], rows: [[String]]) -> some View {
+        let cols = max(header.count, 1)
+        ScrollView(.horizontal, showsIndicators: false) {
+            Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 7) {
+                GridRow {
+                    ForEach(header.indices, id: \.self) { c in
+                        inline(header[c]).bold()
+                    }
+                }
+                Divider().gridCellColumns(cols)
+                ForEach(rows.indices, id: \.self) { r in
+                    GridRow {
+                        ForEach(0..<cols, id: \.self) { c in
+                            inline(c < rows[r].count ? rows[r][c] : "")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+            .padding(12)
+        }
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func headingFont(_ level: Int) -> Font {
@@ -97,8 +135,10 @@ enum MarkdownBlock {
     case paragraph(String)
     case bullet(String)
     case ordered(number: Int, text: String)
+    case task(checked: Bool, text: String)
     case quote(String)
     case code(String)
+    case table(header: [String], rows: [[String]])
     case rule
 }
 
@@ -167,6 +207,22 @@ enum MarkdownParser {
                 continue
             }
 
+            // Tableau (GFM) : ligne d'en-tête « | … | » suivie d'une séparatrice.
+            if trimmed.contains("|"), i + 1 < lines.count, isSeparatorRow(lines[i + 1]) {
+                flushAll()
+                let header = splitRow(trimmed)
+                var rows: [[String]] = []
+                i += 2 // saute en-tête + séparatrice
+                while i < lines.count {
+                    let t = lines[i].trimmingCharacters(in: .whitespaces)
+                    if t.isEmpty || !t.contains("|") { break }
+                    rows.append(splitRow(t))
+                    i += 1
+                }
+                blocks.append(.table(header: header, rows: rows))
+                continue
+            }
+
             // Citation
             if trimmed.hasPrefix(">") {
                 flushParagraph()
@@ -177,6 +233,14 @@ enum MarkdownParser {
                 continue
             } else {
                 flushQuote()
+            }
+
+            // Case à cocher (avant les puces : "- [ ] …" / "- [x] …")
+            if let task = parseTask(trimmed) {
+                flushParagraph()
+                blocks.append(.task(checked: task.0, text: task.1))
+                i += 1
+                continue
             }
 
             // Liste à puces
@@ -215,11 +279,46 @@ enum MarkdownParser {
         return .heading(level: level, text: text)
     }
 
+    private static func parseTask(_ s: String) -> (Bool, String)? {
+        for marker in ["- ", "* ", "+ "] where s.hasPrefix(marker) {
+            let rest = String(s.dropFirst(marker.count))
+            let lower = rest.lowercased()
+            if lower.hasPrefix("[ ]") {
+                return (false, String(rest.dropFirst(3)).trimmingCharacters(in: .whitespaces))
+            }
+            if lower.hasPrefix("[x]") {
+                return (true, String(rest.dropFirst(3)).trimmingCharacters(in: .whitespaces))
+            }
+        }
+        return nil
+    }
+
     private static func parseBullet(_ s: String) -> String? {
         for marker in ["- ", "* ", "+ "] where s.hasPrefix(marker) {
             return String(s.dropFirst(marker.count)).trimmingCharacters(in: .whitespaces)
         }
         return nil
+    }
+
+    /// Découpe une ligne de tableau en cellules (retire les « | » externes).
+    private static func splitRow(_ s: String) -> [String] {
+        var t = s.trimmingCharacters(in: .whitespaces)
+        if t.hasPrefix("|") { t.removeFirst() }
+        if t.hasSuffix("|") { t.removeLast() }
+        return t.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    /// Vrai si la ligne est une séparatrice de tableau (ex. "| --- | :--: |").
+    private static func isSeparatorRow(_ line: String) -> Bool {
+        let t = line.trimmingCharacters(in: .whitespaces)
+        guard t.contains("|"), t.contains("-") else { return false }
+        let cells = splitRow(t)
+        guard !cells.isEmpty else { return false }
+        for c in cells {
+            let cc = c.trimmingCharacters(in: .whitespaces)
+            if cc.isEmpty || !cc.allSatisfy({ $0 == "-" || $0 == ":" }) { return false }
+        }
+        return true
     }
 
     private static func parseOrdered(_ s: String) -> (Int, String)? {

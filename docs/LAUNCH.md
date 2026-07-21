@@ -99,8 +99,9 @@ Retours bienvenus 🙏 #MCP #Claude #buildinpublic
 ## 5. Plan de tournage du GIF de démo (~25 s)
 
 But : montrer la boucle « profil → Claude lit/écrit la mémoire » en un coup d'œil.
-Enregistrement : `Cmd+Shift+5` (macOS) en zone, ou QuickTime → New Screen Recording.
-Convertir en GIF : `ffmpeg -i demo.mov -vf "fps=12,scale=900:-1" docs/demo.gif`.
+Enregistrement : `Cmd+Shift+5` (macOS) → « Enregistrer une portion », cadre la fenêtre.
+Convertir en GIF optimisé : `bash tools/demo/make-gif.sh demo.mov` → `docs/demo.gif`
+(options : `START=2 DURATION=25 FPS=15 WIDTH=1000 bash tools/demo/make-gif.sh demo.mov`).
 
 Séquence :
 1. (3 s) App ClaudeVault au lancement → déverrouillage Touch ID.
