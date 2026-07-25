@@ -64,12 +64,15 @@ if [ "$SIGN_IDENTITY" = "-" ]; then
 else
   echo "▶︎ Build (${CONFIG}) — Developer ID : ${SIGN_IDENTITY}…"
   # Hardened runtime (déjà activé dans le projet) + secure timestamp : requis pour notariser.
+  # CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO : évite l'entitlement de débogage
+  # get-task-allow, qui fait échouer la notarisation (l'app n'a aucun entitlement).
   xcodebuild \
     -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
     -derivedDataPath "$BUILD_DIR/dd" \
     CONFIGURATION_BUILD_DIR="$BUILD_DIR/app" \
     CODE_SIGN_IDENTITY="$SIGN_IDENTITY" CODE_SIGN_STYLE=Manual \
     DEVELOPMENT_TEAM="$TEAM_ID" \
+    CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
     OTHER_CODE_SIGN_FLAGS="--timestamp --options runtime" \
     build
 fi
