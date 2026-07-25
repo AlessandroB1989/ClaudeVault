@@ -36,10 +36,9 @@ Tout est **100 % local** : aucun cloud, aucune synchronisation externe.
 
 - Récupérez `ClaudeVault.dmg` depuis la page
   [Releases](https://github.com/AlessandroB1989/ClaudeVault/releases).
-- Ouvrez-le, glissez **ClaudeVault** dans **Applications**.
-- Au **premier lancement** : clic droit sur l'app → **Ouvrir** → **Ouvrir**
-  (l'app est signée ad-hoc mais pas notarisée ; cette étape n'est nécessaire
-  qu'une fois).
+- Ouvrez-le, glissez **ClaudeVault** dans **Applications**, puis **double-cliquez**.
+- L'app est **signée Developer ID et notarisée par Apple** (BAAIR) : aucun
+  avertissement Gatekeeper.
 
 **Option B — Compiler depuis les sources**
 
