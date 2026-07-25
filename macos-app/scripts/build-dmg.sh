@@ -2,6 +2,10 @@
 # Construit ClaudeVault.app puis l'emballe dans un .dmg (glisser → Applications).
 # À lancer sur ta machine (Xcode requis).
 #
+# La compilation se fait dans un dossier TEMPORAIRE HORS du projet : si le repo
+# est dans Google Drive/iCloud, compiler sur place casse la base de build
+# (erreurs « disk I/O error »). Seul le .dmg final est écrit dans dist/.
+#
 # DEUX MODES, pilotés par variables d'environnement :
 #
 #  • Local (par défaut) — signature ad-hoc, aucun compte requis :
@@ -16,13 +20,10 @@
 #    → .dmg signé, notarisé, staplé : double-clic sans avertissement.
 #
 #    Pré-requis notarisation (une seule fois) :
-#      1. Xcode ▸ Settings ▸ Accounts → ajoute ton Apple ID, crée un certificat
-#         « Developer ID Application ».
-#      2. Crée un mot de passe d'app : https://account.apple.com → Sécurité.
-#      3. Enregistre les identifiants notarytool dans le trousseau :
-#         xcrun notarytool store-credentials claudevault-notary \
+#      1. Xcode ▸ Settings ▸ Accounts → certificat « Developer ID Application ».
+#      2. Mot de passe d'app : https://account.apple.com → Connexion et sécurité.
+#      3. xcrun notarytool store-credentials claudevault-notary \
 #           --apple-id alexandre@baair.solutions --team-id XXXXXXXXXX
-#         (colle le mot de passe d'app quand demandé)
 #
 set -euo pipefail
 
@@ -31,17 +32,19 @@ cd "$(dirname "$0")/.."   # → macos-app/
 PROJECT="ClaudeVault.xcodeproj"
 SCHEME="ClaudeVault"
 CONFIG="Release"
-BUILD_DIR="build"
 APP_NAME="ClaudeVault"
-DMG_OUT="../dist/${APP_NAME}.dmg"
+DIST_DIR="../dist"
+DMG_OUT="${DIST_DIR}/${APP_NAME}.dmg"
 
 # Signature : ad-hoc par défaut, Developer ID si SIGN_IDENTITY est fourni.
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 TEAM_ID="${TEAM_ID:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
 
-rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR" "../dist"
+# Dossier de build TEMPORAIRE hors du projet (évite les I/O errors Google Drive).
+BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ClaudeVault-build.XXXXXX")"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+mkdir -p "$DIST_DIR"
 
 # Si Xcode n'est pas l'outil par défaut (xcode-select → CommandLineTools),
 # on le pointe le temps du build, sans sudo.
@@ -54,7 +57,7 @@ if [ "$SIGN_IDENTITY" = "-" ]; then
   xcodebuild \
     -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
     -derivedDataPath "$BUILD_DIR/dd" \
-    CONFIGURATION_BUILD_DIR="$PWD/$BUILD_DIR/app" \
+    CONFIGURATION_BUILD_DIR="$BUILD_DIR/app" \
     CODE_SIGN_IDENTITY="-" CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
     CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
     build
@@ -64,7 +67,7 @@ else
   xcodebuild \
     -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIG" \
     -derivedDataPath "$BUILD_DIR/dd" \
-    CONFIGURATION_BUILD_DIR="$PWD/$BUILD_DIR/app" \
+    CONFIGURATION_BUILD_DIR="$BUILD_DIR/app" \
     CODE_SIGN_IDENTITY="$SIGN_IDENTITY" CODE_SIGN_STYLE=Manual \
     DEVELOPMENT_TEAM="$TEAM_ID" \
     OTHER_CODE_SIGN_FLAGS="--timestamp --options runtime" \
@@ -76,9 +79,10 @@ APP_PATH="$BUILD_DIR/app/${APP_NAME}.app"
 
 echo "▶︎ Fabrication du .dmg…"
 STAGING="$BUILD_DIR/dmg"
-rm -rf "$STAGING"; mkdir -p "$STAGING"
+mkdir -p "$STAGING"
 cp -R "$APP_PATH" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
+rm -f "$DMG_OUT"
 hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG_OUT"
 
 # Notarisation + agrafage (mode distribution uniquement).
@@ -94,5 +98,5 @@ echo "✅ DMG prêt : dist/${APP_NAME}.dmg"
 if [ "$SIGN_IDENTITY" = "-" ]; then
   echo "   (ad-hoc — 1er lancement : clic droit → Ouvrir)"
 else
-  echo "   (Developer ID — double-clic sans avertissement)"
+  echo "   (Developer ID — double-clic sans avertissement une fois notarisé)"
 fi
