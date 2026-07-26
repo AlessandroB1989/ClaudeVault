@@ -14,6 +14,12 @@ mot de passe de session. Un serveur MCP expose le tout à Claude.
 
 Tout est **100 % local** : aucun cloud, aucune synchronisation externe.
 
+<p align="center">
+  <img src="docs/demo.gif" width="720" alt="Aperçu : Claude écrit dans la mémoire d'un profil via MCP" />
+  <br>
+  <em>Aperçu animé — Claude range une info dans le bon profil via l'outil MCP <code>write_note</code>.</em>
+</p>
+
 ---
 
 ## Ce que ça fait
