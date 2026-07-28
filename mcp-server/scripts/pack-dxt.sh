@@ -11,9 +11,15 @@ echo "▶︎ Build TypeScript…"
 npm install
 npm run build
 
+echo "▶︎ Élagage des dépendances de dev (bundle plus léger)…"
+npm prune --omit=dev
+
 echo "▶︎ Packaging Desktop Extension…"
 # L'outil `mcpb pack` lit manifest.json et embarque build/ + node_modules de prod.
 npx --yes @anthropic-ai/mcpb pack . ../dist/claudevault.mcpb
+
+echo "▶︎ Restauration des dépendances de dev…"
+npm install >/dev/null
 
 echo "✅ Bundle prêt : dist/claudevault.mcpb"
 echo "   Ouvre-le avec Claude Desktop pour l'installer en un clic."
