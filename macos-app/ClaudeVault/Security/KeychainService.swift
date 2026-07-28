@@ -14,6 +14,10 @@ enum KeychainService {
     struct APIKey: Identifiable, Hashable {
         var id: String { name }
         var name: String
+        /// Libellé libre pour distinguer des clés d'un même service
+        /// (ex. « Stripe — Production — Projet X »). Stocké dans le
+        /// commentaire de l'entrée Keychain.
+        var reference: String = ""
     }
 
     /// Exécute /usr/bin/security. Retourne true si code de sortie 0.
@@ -36,19 +40,37 @@ enum KeychainService {
     // MARK: - Écriture / mise à jour
 
     @discardableResult
-    static func set(name: String, value: String) -> Bool {
+    static func set(name: String, value: String, reference: String = "") -> Bool {
         let account = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !account.isEmpty, !value.isEmpty else { return false }
         // -U : met à jour si la clé existe déjà.
         // -A : accessible par toutes les applications de l'utilisateur (pas de popup MCP).
-        return runSecurity([
+        // -j : commentaire = référence (libellé libre).
+        var args = [
             "add-generic-password",
             "-s", service,
             "-a", account,
             "-w", value,
-            "-U",
-            "-A",
-        ])
+            "-U", "-A",
+        ]
+        let ref = reference.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !ref.isEmpty { args += ["-j", ref] }
+        return runSecurity(args)
+    }
+
+    /// Met à jour uniquement la référence (commentaire) d'une clé existante,
+    /// sans avoir à ressaisir la valeur secrète.
+    @discardableResult
+    static func setReference(name: String, reference: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: name,
+        ]
+        let attrs: [String: Any] = [
+            kSecAttrComment as String: reference.trimmingCharacters(in: .whitespacesAndNewlines),
+        ]
+        return SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
     }
 
     // MARK: - Lecture
@@ -78,6 +100,11 @@ enum KeychainService {
 
     /// Liste les noms de toutes les clés du vault (sans les valeurs).
     static func listNames() -> [String] {
+        listItems().map { $0.name }
+    }
+
+    /// Liste les clés du vault avec leur référence (sans les valeurs).
+    static func listItems() -> [APIKey] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -88,7 +115,11 @@ enum KeychainService {
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let items = result as? [[String: Any]] else { return [] }
         return items
-            .compactMap { $0[kSecAttrAccount as String] as? String }
-            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+            .compactMap { attrs -> APIKey? in
+                guard let name = attrs[kSecAttrAccount as String] as? String else { return nil }
+                let ref = attrs[kSecAttrComment as String] as? String ?? ""
+                return APIKey(name: name, reference: ref)
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 }
