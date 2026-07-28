@@ -96,22 +96,34 @@ Retours bienvenus 🙏 #MCP #Claude #buildinpublic
 
 ---
 
-## 5. Plan de tournage du GIF de démo (~25 s)
+## 5. Plan de tournage du GIF de démo (vraie app + Claude, ~20 s)
 
-But : montrer la boucle « profil → Claude lit/écrit la mémoire » en un coup d'œil.
-Enregistrement : `Cmd+Shift+5` (macOS) → « Enregistrer une portion », cadre la fenêtre.
-Convertir en GIF optimisé : `bash tools/demo/make-gif.sh demo.mov` → `docs/demo.gif`
-(options : `START=2 DURATION=25 FPS=15 WIDTH=1000 bash tools/demo/make-gif.sh demo.mov`).
+But : montrer la boucle qui fait vendre — **mémoire isolée par profil** + **Claude
+qui écrit dedans** via MCP.
 
-Séquence :
-1. (3 s) App ClaudeVault au lancement → déverrouillage Touch ID.
-2. (4 s) Clic « + » → créer le profil « Business IA » (nom + dossier).
-3. (4 s) Onglet Clés API → ajouter `OPENAI_API_KEY` (valeur masquée).
-4. (6 s) Dans Claude Desktop : « liste mes profils ClaudeVault » → réponse ;
-   « note dans Business IA : client Acme signé » → Claude appelle `write_note`.
-5. (5 s) Retour dans l'app → le fichier apparaît dans notes/, ouverture en aperçu
-   Markdown.
-6. (3 s) Plan large sur l'icône + URL du repo.
+### Préparation
+- Fenêtre ClaudeVault ~1280×800, thème cohérent, infos perso masquées.
+- **≥ 2 profils** déjà créés (ex. Business IA, Voyages) pour montrer l'isolation.
+- **Claude Desktop** ouvert, MCP ClaudeVault connecté (teste avant : « liste mes
+  profils ClaudeVault »).
+- Idéalement, ClaudeVault et Claude Desktop côte à côte (ou plein écran, je recadre).
 
-Astuce : range la fenêtre à ~1280×800, thème clair, cache les infos perso.
-Place le GIF final dans `docs/demo.gif` et référence-le en haut du README.
+### Séquence
+1. (0-3 s) ClaudeVault au premier plan → **déverrouillage Touch ID**.
+2. (3-7 s) Clic **Business IA** → ses notes + `memory.md`. Puis clic **Voyages** →
+   contenu différent → **l'isolation par profil se voit**. Reviens sur Business IA.
+3. (7-14 s) Bascule vers **Claude Desktop** → tape :
+   « Dans mon profil Business IA, note que le client Acme a signé, MVP le 30/07. »
+   → Claude appelle **`write_note`** (la tool-call s'affiche).
+4. (14-18 s) Retour dans ClaudeVault → le fichier **`clients/acme.md` apparaît** dans
+   `notes/` → ouvre-le en **aperçu Markdown**.
+5. (18-20 s) Optionnel : onglet **Clés API** (le vault Keychain).
+
+### Enregistrement & remise
+- `Cmd+Shift+5` → « Enregistrer une portion » → cadre → **Enregistrer** ; arrête via
+  l'icône de la barre de menus. Sauvegarde en `demo.mov`.
+- Fais des **pauses nettes** entre étapes (ça rend mieux en GIF), curseur visible.
+- Envoie-moi `demo.mov` (dépose-le dans le dossier du projet ou sur le Bureau et
+  donne-moi le chemin) → je m'occupe du **trim + optimisation + intégration README** :
+  `bash tools/demo/make-gif.sh demo.mov docs/demo.gif`
+  (je choisis le meilleur segment via `START`/`DURATION`).
