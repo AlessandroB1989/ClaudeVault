@@ -67,12 +67,12 @@ Tout est **100 % local** : aucun cloud, aucune synchronisation externe.
 
 **Claude Desktop (recommandé, un clic) :**
 
-```bash
-cd mcp-server
-bash scripts/pack-dxt.sh        # génère dist/claudevault.mcpb
-```
-
-Double-cliquez `dist/claudevault.mcpb` : Claude Desktop propose l'installation en un clic.
+- Téléchargez `claudevault.mcpb` depuis la
+  [page Releases](https://github.com/AlessandroB1989/ClaudeVault/releases) et
+  **double-cliquez-le** → Claude Desktop propose l'installation en un clic, puis
+  activez l'extension dans ses réglages.
+- Ou reconstruisez-le : `cd mcp-server && bash scripts/pack-dxt.sh` →
+  `dist/claudevault.mcpb`.
 
 **Claude Code :**
 
