@@ -55,7 +55,9 @@ enum KeychainService {
         ]
         let ref = reference.trimmingCharacters(in: .whitespacesAndNewlines)
         if !ref.isEmpty { args += ["-j", ref] }
-        return runSecurity(args)
+        let ok = runSecurity(args)
+        exportIndex()
+        return ok
     }
 
     /// Met à jour uniquement la référence (commentaire) d'une clé existante,
@@ -70,7 +72,9 @@ enum KeychainService {
         let attrs: [String: Any] = [
             kSecAttrComment as String: reference.trimmingCharacters(in: .whitespacesAndNewlines),
         ]
-        return SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
+        let ok = SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
+        exportIndex()
+        return ok
     }
 
     // MARK: - Lecture
@@ -93,7 +97,26 @@ enum KeychainService {
 
     @discardableResult
     static func delete(name: String) -> Bool {
-        runSecurity(["delete-generic-password", "-s", service, "-a", name])
+        let ok = runSecurity(["delete-generic-password", "-s", service, "-a", name])
+        exportIndex()
+        return ok
+    }
+
+    /// URL de l'index partagé avec le serveur MCP (~/.vault-mcp/api-keys.json).
+    private static var indexFileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".vault-mcp/api-keys.json")
+    }
+
+    /// Écrit l'index des clés (noms + références, SANS les valeurs) pour que
+    /// l'outil MCP list_api_keys puisse les présenter à Claude.
+    static func exportIndex() {
+        let entries = listItems().map { ["name": $0.name, "reference": $0.reference] }
+        guard let data = try? JSONSerialization.data(
+            withJSONObject: entries, options: [.prettyPrinted, .sortedKeys]) else { return }
+        let dir = indexFileURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: indexFileURL, options: .atomic)
     }
 
     // MARK: - Liste

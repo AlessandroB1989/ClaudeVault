@@ -70,11 +70,12 @@ after(async () => {
   if (workDir) await fs.rm(workDir, { recursive: true, force: true });
 });
 
-test("les 7 outils sont exposés", async () => {
+test("les 8 outils sont exposés", async () => {
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
   assert.deepEqual(names, [
     "get_api_key",
+    "list_api_keys",
     "list_profiles",
     "read_memory",
     "read_notes",
@@ -82,6 +83,29 @@ test("les 7 outils sont exposés", async () => {
     "update_profile_memory",
     "write_note",
   ]);
+});
+
+test("list_api_keys lit l'index api-keys.json (noms + références)", async () => {
+  // Simule l'index écrit par l'app.
+  await fs.writeFile(
+    join(vaultDir, "api-keys.json"),
+    JSON.stringify([
+      { name: "STRIPE_PROD_X", reference: "Stripe — Production — Projet X" },
+      { name: "STRIPE_TEST_X", reference: "Stripe — Démo — Projet X" },
+    ])
+  );
+  const res = await client.callTool({ name: "list_api_keys", arguments: {} });
+  const t = textOf(res);
+  assert.match(t, /STRIPE_PROD_X — Stripe — Production — Projet X/);
+  assert.match(t, /STRIPE_TEST_X — Stripe — Démo — Projet X/);
+  // Ne doit jamais exposer de valeur.
+  assert.doesNotMatch(t, /sk_/);
+});
+
+test("list_api_keys : index absent → message clair", async () => {
+  await fs.rm(join(vaultDir, "api-keys.json"), { force: true });
+  const res = await client.callTool({ name: "list_api_keys", arguments: {} });
+  assert.match(textOf(res), /Aucune clé API/i);
 });
 
 test("list_profiles retourne le profil configuré", async () => {

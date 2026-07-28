@@ -156,6 +156,7 @@ struct APIKeysView: View {
 
     private func reload() {
         items = KeychainService.listItems()
+        KeychainService.exportIndex()   // garde ~/.vault-mcp/api-keys.json à jour pour le MCP
         revealed.removeAll()
         cache.removeAll()
     }

@@ -87,8 +87,8 @@ C'est tout. Demandez à Claude : *« liste mes profils ClaudeVault »*.
 
 ## Comment Claude utilise la mémoire
 
-Le serveur expose 7 outils : `list_profiles`, `set_active_profile`, `read_memory`,
-`read_notes`, `write_note`, `update_profile_memory`, `get_api_key`.
+Le serveur expose 8 outils : `list_profiles`, `set_active_profile`, `read_memory`,
+`read_notes`, `write_note`, `update_profile_memory`, `list_api_keys`, `get_api_key`.
 
 Consigne de comportement « second brain » (déjà dans le `CLAUDE.md` du projet) :
 

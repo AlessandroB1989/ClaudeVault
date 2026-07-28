@@ -21,6 +21,11 @@ export const VAULT_DIR =
     : join(homedir(), ".vault-mcp");
 export const PROFILES_FILE = join(VAULT_DIR, "profiles.json");
 export const STATE_FILE = join(VAULT_DIR, "state.json");
+/**
+ * Index des clés API (noms + références, JAMAIS les valeurs), écrit par l'app.
+ * Sert à l'outil list_api_keys ; les valeurs restent dans le Keychain.
+ */
+export const API_KEYS_FILE = join(VAULT_DIR, "api-keys.json");
 
 export interface Profile {
   id: string;
@@ -106,4 +111,26 @@ export async function setActiveProfileId(profileId: string): Promise<void> {
   await ensureVaultDir();
   const state: State = { activeProfileId: profileId };
   await fs.writeFile(STATE_FILE, JSON.stringify(state, null, 2), "utf8");
+}
+
+export interface ApiKeyRef {
+  name: string;
+  reference: string;
+}
+
+/** Lit l'index des clés API (noms + références). Vide si le fichier n'existe pas. */
+export async function readApiKeyIndex(): Promise<ApiKeyRef[]> {
+  try {
+    const raw = await fs.readFile(API_KEYS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((x) => ({
+        name: String(x?.name ?? ""),
+        reference: String(x?.reference ?? ""),
+      }))
+      .filter((x) => x.name.length > 0);
+  } catch {
+    return [];
+  }
 }

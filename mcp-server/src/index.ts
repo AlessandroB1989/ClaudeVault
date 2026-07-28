@@ -17,6 +17,7 @@ import {
   readActiveProfileId,
   touchProfile,
   memoryFileName,
+  readApiKeyIndex,
 } from "./config.js";
 import { readNotes, writeNote } from "./notes.js";
 import {
@@ -200,6 +201,35 @@ server.registerTool(
       `Tokens : ~${result.tokensBefore} → ~${result.tokensAfter} / ${MAX_MEMORY_TOKENS}.`;
     if (result.warning) msg += `\n\n${result.warning}`;
     return text(msg);
+  }
+);
+
+// ─── list_api_keys ────────────────────────────────────────────────────────────
+server.registerTool(
+  "list_api_keys",
+  {
+    title: "Lister les clés API",
+    description:
+      "Liste les clés API disponibles (nom + référence, SANS les valeurs). " +
+      "Utilise la référence pour choisir la bonne clé (ex. démo vs production, " +
+      "projet), puis appelle get_api_key avec le nom exact.",
+    inputSchema: {},
+  },
+  async () => {
+    const keys = await readApiKeyIndex();
+    if (keys.length === 0) {
+      return text(
+        "Aucune clé API enregistrée (ou index absent). Ajoute des clés depuis " +
+          "l'app ClaudeVault, onglet « Clés API »."
+      );
+    }
+    const lines = keys.map((k) =>
+      k.reference ? `- ${k.name} — ${k.reference}` : `- ${k.name}`
+    );
+    return text(
+      `Clés API disponibles (${keys.length}) :\n${lines.join("\n")}\n\n` +
+        "Récupère une valeur avec get_api_key(nom)."
+    );
   }
 );
 

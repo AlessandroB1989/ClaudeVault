@@ -24,6 +24,7 @@
     { "name": "read_notes", "description": "Lit les notes brutes .md du profil." },
     { "name": "write_note", "description": "Crée/modifie une note .md." },
     { "name": "update_profile_memory", "description": "Ajoute un résumé condensé à memory.md (limite ~5000 tokens)." },
+    { "name": "list_api_keys", "description": "Liste les clés API (nom + référence, sans les valeurs)." },
     { "name": "get_api_key", "description": "Récupère une clé API depuis le Keychain macOS." }
   ],
   "keywords": ["claude", "mcp", "memory", "second-brain", "keychain"],
