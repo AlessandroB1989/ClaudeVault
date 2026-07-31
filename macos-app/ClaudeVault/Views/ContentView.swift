@@ -3,7 +3,7 @@ import SwiftUI
 /// Sélection courante dans la sidebar.
 enum SidebarSelection: Hashable {
     case profile(String)
-    case apiKeys
+    case vault(VaultCategory)
 }
 
 /// Interface principale : sidebar (profils + Clés API) à gauche, contenu à droite.
@@ -24,7 +24,7 @@ struct ContentView: View {
         }
         .onAppear {
             if selection == nil {
-                selection = store.profiles.first.map { .profile($0.id) } ?? .apiKeys
+                selection = store.profiles.first.map { .profile($0.id) } ?? .vault(.apiKey)
             }
         }
     }
@@ -52,7 +52,7 @@ struct ContentView: View {
                     .contextMenu {
                         Button(role: .destructive) {
                             store.removeProfile(profile)
-                            if selection == .profile(profile.id) { selection = .apiKeys }
+                            if selection == .profile(profile.id) { selection = .vault(.apiKey) }
                         } label: {
                             Label("Retirer de la liste", systemImage: "trash")
                         }
@@ -73,8 +73,10 @@ struct ContentView: View {
             }
 
             Section("Vault") {
-                Label("Clés API", systemImage: "key.fill")
-                    .tag(SidebarSelection.apiKeys)
+                ForEach(VaultCategory.allCases) { category in
+                    Label(category.title, systemImage: category.systemImage)
+                        .tag(SidebarSelection.vault(category))
+                }
             }
         }
         .listStyle(.sidebar)
@@ -103,8 +105,13 @@ struct ContentView: View {
             } else {
                 emptyState
             }
-        case .apiKeys:
-            APIKeysView()
+        case .vault(let category):
+            switch category {
+            case .apiKey: APIKeysView()
+            case .email: EmailVaultView()
+            case .recovery: RecoveryVaultView()
+            case .database: DatabaseVaultView()
+            }
         case .none:
             emptyState
         }

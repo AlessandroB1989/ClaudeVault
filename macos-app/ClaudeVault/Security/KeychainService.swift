@@ -102,6 +102,147 @@ enum KeychainService {
         return ok
     }
 
+    /// Édite une clé API : renomme, change la référence et/ou la valeur.
+    /// La valeur est conservée si `newValue` est nil (déplacée en interne, jamais affichée).
+    @discardableResult
+    static func editAPIKey(oldName: String, newName: String, reference: String,
+                           newValue: String?) -> Bool {
+        let value = newValue ?? get(name: oldName) ?? ""
+        guard !value.isEmpty else { return false }
+        let newAccount = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !newAccount.isEmpty else { return false }
+        if oldName != newAccount { delete(name: oldName) }
+        return set(name: newAccount, value: value, reference: reference)
+    }
+
+    // MARK: - Enregistrements génériques (Email / Recovery / Database)
+    //
+    // Stockage APP-PRIVÉ (SecItem, sans -A) : ces secrets ne sont lisibles que par
+    // ClaudeVault, pas par d'autres process. Le secret est la donnée chiffrée de
+    // l'entrée ; les champs non sensibles vont dans le commentaire (JSON).
+
+    private static func metadataToJSON(_ meta: [String: String]) -> String {
+        guard !meta.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: meta, options: [.sortedKeys]),
+              let s = String(data: data, encoding: .utf8) else { return "" }
+        return s
+    }
+    private static func jsonToMetadata(_ s: String?) -> [String: String] {
+        guard let s, let data = s.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [:] }
+        var out: [String: String] = [:]
+        for (k, v) in obj { out[k] = String(describing: v) }
+        return out
+    }
+
+    /// Crée ou met à jour un enregistrement (secret + métadonnées non sensibles).
+    @discardableResult
+    static func saveRecord(service: String, account: String, secret: String,
+                           metadata: [String: String]) -> Bool {
+        let acc = account.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !acc.isEmpty, let data = secret.data(using: .utf8) else { return false }
+        let comment = metadataToJSON(metadata)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: acc,
+        ]
+        let attrs: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrComment as String: comment,
+        ]
+        let status = SecItemUpdate(query as CFDictionary, attrs as CFDictionary)
+        if status == errSecSuccess { return true }
+        if status == errSecItemNotFound {
+            var add = query
+            add[kSecValueData as String] = data
+            add[kSecAttrComment as String] = comment
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
+            return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
+        }
+        return false
+    }
+
+    /// Liste les enregistrements d'un service : compte + métadonnées (SANS le secret).
+    static func listRecords(service: String) -> [(account: String, metadata: [String: String])] {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let items = result as? [[String: Any]] else { return [] }
+        return items
+            .compactMap { attrs -> (String, [String: String])? in
+                guard let account = attrs[kSecAttrAccount as String] as? String else { return nil }
+                return (account, jsonToMetadata(attrs[kSecAttrComment as String] as? String))
+            }
+            .sorted { $0.0.localizedStandardCompare($1.0) == .orderedAscending }
+    }
+
+    /// Lit le secret d'un enregistrement (à n'appeler qu'après authentification).
+    static func revealRecord(service: String, account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    @discardableResult
+    static func deleteRecord(service: String, account: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
+    }
+
+    /// Renomme un enregistrement (change le compte) en conservant secret + métadonnées.
+    @discardableResult
+    static func renameRecord(service: String, from: String, to: String) -> Bool {
+        let dest = to.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !dest.isEmpty, dest != from else { return dest == from }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: from,
+        ]
+        let attrs: [String: Any] = [kSecAttrAccount as String: dest]
+        return SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
+    }
+
+    /// Met à jour le secret et/ou les métadonnées d'un enregistrement existant.
+    /// `secret == nil` → inchangé ; `metadata == nil` → inchangé.
+    @discardableResult
+    static func updateRecord(service: String, account: String,
+                             secret: String?, metadata: [String: String]?) -> Bool {
+        var attrs: [String: Any] = [:]
+        if let secret, let data = secret.data(using: .utf8) {
+            attrs[kSecValueData as String] = data
+        }
+        if let metadata {
+            attrs[kSecAttrComment as String] = metadataToJSON(metadata)
+        }
+        guard !attrs.isEmpty else { return true }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        return SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
+    }
+
     /// URL de l'index partagé avec le serveur MCP (~/.vault-mcp/api-keys.json).
     private static var indexFileURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
