@@ -12,14 +12,26 @@ final class AppLock: ObservableObject {
 
     private let reason = "Déverrouiller ClaudeVault pour accéder à vos profils et clés API."
 
+    /// Mode démo (Debug uniquement) : démarre déverrouillé pour capturer l'UI,
+    /// jamais compilé dans une build Release/distribuée.
+    static var demoMode: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["CLAUDEVAULT_DEMO"] == "1"
+        #else
+        return false
+        #endif
+    }
+
     /// Verrouille immédiatement (retour au premier plan, mise en veille…).
     func lock() {
+        if Self.demoMode { return }
         isUnlocked = false
     }
 
     /// Lance l'authentification. Idempotent : ne relance pas si déjà en cours
     /// ou déjà déverrouillé.
     func authenticate() {
+        if Self.demoMode { isUnlocked = true; return }
         guard !isUnlocked, !isAuthenticating else { return }
         isAuthenticating = true
         lastError = nil

@@ -24,7 +24,8 @@ struct ContentView: View {
         }
         .onAppear {
             if selection == nil {
-                selection = store.profiles.first.map { .profile($0.id) } ?? .vault(.apiKey)
+                selection = Self.demoSelection()
+                    ?? store.profiles.first.map { .profile($0.id) } ?? .vault(.apiKey)
             }
         }
     }
@@ -115,6 +116,20 @@ struct ContentView: View {
         case .none:
             emptyState
         }
+    }
+
+    /// Sélection initiale pilotée par CLAUDEVAULT_DEMO_STATE (capture GIF, Debug).
+    static func demoSelection() -> SidebarSelection? {
+        #if DEBUG
+        switch ProcessInfo.processInfo.environment["CLAUDEVAULT_DEMO_STATE"] {
+        case "voyages": return .profile("voyages")
+        case "memory", "roadmap-edit", "roadmap-preview": return .profile("business-ia")
+        case "vault": return .vault(.recovery)
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
     }
 
     private var emptyState: some View {

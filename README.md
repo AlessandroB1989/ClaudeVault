@@ -14,11 +14,9 @@ mot de passe de session. Un serveur MCP expose le tout à Claude.
 
 Tout est **100 % local** : aucun cloud, aucune synchronisation externe.
 
-<!-- DÉMO : glisser ici le vrai GIF une fois enregistré →
 <p align="center">
-  <img src="docs/demo.gif" width="720" alt="Démo : Claude écrit dans la mémoire d'un profil via MCP" />
+  <img src="docs/demo.gif" width="760" alt="ClaudeVault : mémoire par profil, notes Markdown avec aperçu (tableaux + cases à cocher)" />
 </p>
--->
 
 ---
 

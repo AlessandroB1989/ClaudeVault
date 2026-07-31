@@ -260,11 +260,34 @@ struct ProfileDetailView: View {
         return nil
     }
 
+    private func firstNode(named name: String, in nodes: [FileNode]) -> FileNode? {
+        for n in nodes {
+            if !n.isDirectory, n.name == name { return n }
+            if let c = n.children, let found = firstNode(named: name, in: c) { return found }
+        }
+        return nil
+    }
+
     // MARK: - Actions
 
     private func reload() {
         try? NotesManager.ensureNotesDir(for: profile)
         nodes = NotesManager.tree(for: profile)
+        #if DEBUG
+        // Capture GIF : ouvre directement la note voulue dans le bon mode.
+        // On récupère l'URL depuis l'arbre (normalisation /private/tmp identique).
+        if let state = ProcessInfo.processInfo.environment["CLAUDEVAULT_DEMO_STATE"],
+           state.hasPrefix("roadmap"),
+           let node = firstNode(named: "roadmap.md", in: nodes) {
+            selection = node.url
+            load(node.url)
+            if state == "roadmap-preview" {
+                // Posé après que .onChange(of: selection) ait rappelé load() (mode=.edit).
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { mode = .preview }
+            }
+            return
+        }
+        #endif
         if selection == nil {
             selection = memoryURL
         }

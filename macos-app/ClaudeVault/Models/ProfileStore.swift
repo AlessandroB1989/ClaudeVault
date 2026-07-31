@@ -7,9 +7,14 @@ final class ProfileStore: ObservableObject {
     @Published var profiles: [Profile] = []
     @Published var lastError: String?
 
-    /// Dossier ~/.vault-mcp
+    /// Dossier de config. Par défaut ~/.vault-mcp ; surchargé par CLAUDEVAULT_DIR
+    /// (parité avec le serveur MCP, pratique pour une démo ou une config alternative).
     static var vaultDir: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        if let dir = ProcessInfo.processInfo.environment["CLAUDEVAULT_DIR"],
+           !dir.trimmingCharacters(in: .whitespaces).isEmpty {
+            return URL(fileURLWithPath: dir, isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".vault-mcp", isDirectory: true)
     }
 
