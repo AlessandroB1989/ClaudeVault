@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// Onglet Clés API : vault unique partagé, stocké dans le Keychain macOS.
-/// Chaque clé a un nom (unique) + une référence libre. La valeur est masquée
-/// et ne s'affiche/copie qu'après Touch ID / Face ID / mot de passe.
+/// Onglet Clés API : vault partagé (Keychain, service « ClaudeVault »).
+/// Plusieurs clés peuvent porter le MÊME nom ; la référence (optionnelle) les
+/// distingue. La valeur est masquée et ne s'affiche/copie qu'après Touch ID.
 struct APIKeysView: View {
-    private let service = VaultCategory.apiKey.service
-
     @State private var items: [KeychainService.APIKey] = []
     @State private var showingAdd = false
     @State private var editing: KeychainService.APIKey?
@@ -23,8 +21,8 @@ struct APIKeysView: View {
             } header: {
                 Text("Vault partagé (Keychain macOS · service « ClaudeVault »)")
             } footer: {
-                Text("La référence aide à distinguer plusieurs clés d'un même service "
-                     + "(Stripe démo/prod, projets). Claude lit une clé par son nom via get_api_key.")
+                Text("Plusieurs clés peuvent avoir le même nom : la référence les distingue "
+                     + "(ex. Stripe démo/prod, projets). Claude choisit via list_api_keys puis get_api_key.")
                     .font(.caption)
             }
         }
@@ -38,10 +36,10 @@ struct APIKeysView: View {
         }
         .onAppear(perform: reload)
         .sheet(isPresented: $showingAdd, onDismiss: reload) {
-            APIKeyEditSheet(service: service, existing: nil)
+            APIKeyEditSheet(existing: nil)
         }
         .sheet(item: $editing, onDismiss: reload) { key in
-            APIKeyEditSheet(service: service, existing: key)
+            APIKeyEditSheet(existing: key)
         }
     }
 
@@ -59,14 +57,14 @@ struct APIKeysView: View {
                     }
                 }
                 SecretReveal(reason: "Afficher la clé « \(key.name) »") {
-                    KeychainService.get(name: key.name)
+                    KeychainService.apiKeyValue(id: key.id)
                 }
             }
             Spacer(minLength: 8)
             Button { editing = key } label: { Image(systemName: "pencil") }
                 .buttonStyle(.borderless).help("Éditer")
             Button(role: .destructive) {
-                KeychainService.delete(name: key.name); reload()
+                KeychainService.deleteAPIKey(id: key.id); reload()
             } label: { Image(systemName: "trash") }
                 .buttonStyle(.borderless).help("Supprimer")
         }
@@ -81,7 +79,6 @@ struct APIKeysView: View {
 
 /// Feuille d'ajout / édition d'une clé API.
 private struct APIKeyEditSheet: View {
-    let service: String
     let existing: KeychainService.APIKey?
     @Environment(\.dismiss) private var dismiss
 
@@ -96,13 +93,13 @@ private struct APIKeyEditSheet: View {
             Text(isEdit ? "Éditer la clé" : "Nouvelle clé API")
                 .font(.title3.weight(.semibold))
             Form {
-                TextField("Nom", text: $name, prompt: Text("STRIPE_PROD_PROJET_X"))
+                TextField("Nom", text: $name, prompt: Text("STRIPE_SECRET_KEY"))
                 TextField("Référence (optionnelle)", text: $reference,
-                          prompt: Text("Stripe — Production — Projet X"))
+                          prompt: Text("Production — Projet X"))
                 if isEdit, let existing {
                     LabeledContent("Valeur") {
                         SecretReveal(reason: "Afficher la clé « \(existing.name) »") {
-                            KeychainService.get(name: existing.name)
+                            KeychainService.apiKeyValue(id: existing.id)
                         }
                     }
                     SecureField("Remplacer la valeur (optionnel)", text: $value,
@@ -138,11 +135,11 @@ private struct APIKeyEditSheet: View {
 
     private func save() {
         if let existing {
-            KeychainService.editAPIKey(
-                oldName: existing.name, newName: name, reference: reference,
+            KeychainService.updateAPIKey(
+                id: existing.id, name: name, reference: reference,
                 newValue: value.isEmpty ? nil : value)
         } else {
-            KeychainService.set(name: name, value: value, reference: reference)
+            KeychainService.addAPIKey(name: name, reference: reference, value: value)
         }
         dismiss()
     }

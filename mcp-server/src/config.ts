@@ -114,21 +114,28 @@ export async function setActiveProfileId(profileId: string): Promise<void> {
 }
 
 export interface ApiKeyRef {
+  /** Compte Keychain (id stable, ou nom pour l'ancien schéma). */
+  id: string;
   name: string;
   reference: string;
 }
 
-/** Lit l'index des clés API (noms + références). Vide si le fichier n'existe pas. */
+/** Lit l'index des clés API (id + nom + référence). Vide si le fichier n'existe pas. */
 export async function readApiKeyIndex(): Promise<ApiKeyRef[]> {
   try {
     const raw = await fs.readFile(API_KEYS_FILE, "utf8");
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((x) => ({
-        name: String(x?.name ?? ""),
-        reference: String(x?.reference ?? ""),
-      }))
+      .map((x) => {
+        const name = String(x?.name ?? "");
+        // Ancien index sans id : le compte Keychain était le nom.
+        return {
+          id: String(x?.id ?? name),
+          name,
+          reference: String(x?.reference ?? ""),
+        };
+      })
       .filter((x) => x.name.length > 0);
   } catch {
     return [];

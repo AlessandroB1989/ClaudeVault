@@ -26,7 +26,7 @@ import {
   estimateTokens,
   MAX_MEMORY_TOKENS,
 } from "./memory.js";
-import { getApiKey } from "./keychain.js";
+import { fetchValueByAccount } from "./keychain.js";
 
 const server = new McpServer({
   name: "claudevault",
@@ -239,15 +239,45 @@ server.registerTool(
   {
     title: "Récupérer une clé API",
     description:
-      "Récupère une clé API depuis le Keychain macOS (vault unique partagé entre " +
-      "tous les profils). Fournis le nom exact de la clé tel que défini dans l'app.",
+      "Récupère la valeur d'une clé API depuis le Keychain macOS. Plusieurs clés " +
+      "peuvent porter le même nom : fournis alors la référence (vue via list_api_keys) " +
+      "pour lever l'ambiguïté.",
     inputSchema: {
-      keyName: z.string().describe('nom de la clé, ex. "OPENAI_API_KEY"'),
+      keyName: z.string().describe('nom de la clé, ex. "STRIPE_SECRET_KEY"'),
+      reference: z
+        .string()
+        .optional()
+        .describe("référence exacte, requise si plusieurs clés ont ce nom"),
     },
   },
-  async ({ keyName }) => {
+  async ({ keyName, reference }) => {
     try {
-      const value = await getApiKey(keyName);
+      const index = await readApiKeyIndex();
+      let matches = index.filter((k) => k.name === keyName);
+      if (reference !== undefined) {
+        matches = matches.filter((k) => k.reference === reference);
+      }
+
+      if (matches.length > 1) {
+        const refs = matches
+          .map((k) => (k.reference ? `« ${k.reference} »` : "(sans référence)"))
+          .join(", ");
+        return fail(
+          `Plusieurs clés « ${keyName} » : précise la référence parmi ${refs}. ` +
+            `Rappelle get_api_key avec le paramètre reference.`
+        );
+      }
+
+      // Compte à lire : l'id de la clé trouvée, sinon le nom directement (ancien schéma
+      // ou index absent).
+      const account = matches.length === 1 ? matches[0].id : keyName;
+      const value = await fetchValueByAccount(account);
+      if (value === null) {
+        return fail(
+          `Clé API "${keyName}"${reference ? ` (${reference})` : ""} introuvable. ` +
+            `Ajoute-la ou vérifie son nom dans l'app ClaudeVault, onglet « Clés API ».`
+        );
+      }
       return text(value);
     } catch (err) {
       return fail((err as Error).message);

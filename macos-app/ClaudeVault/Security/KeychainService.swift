@@ -12,11 +12,11 @@ enum KeychainService {
     static let service = "ClaudeVault"
 
     struct APIKey: Identifiable, Hashable {
-        var id: String { name }
+        /// Identifiant stable (UUID pour les nouvelles clés) : le NOM n'est plus
+        /// l'identité → on peut donner le même nom à plusieurs clés, distinguées
+        /// par leur référence.
+        var id: String
         var name: String
-        /// Libellé libre pour distinguer des clés d'un même service
-        /// (ex. « Stripe — Production — Projet X »). Stocké dans le
-        /// commentaire de l'entrée Keychain.
         var reference: String = ""
     }
 
@@ -37,41 +37,51 @@ enum KeychainService {
         }
     }
 
-    // MARK: - Écriture / mise à jour
+    /// Encode nom + référence en JSON pour le commentaire de l'entrée Keychain.
+    private static func encodeMeta(name: String, reference: String) -> String {
+        let obj = ["name": name, "reference": reference]
+        if let d = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys]),
+           let s = String(data: d, encoding: .utf8) { return s }
+        return name
+    }
 
+    // MARK: - Écriture
+
+    /// Ajoute une NOUVELLE clé. L'id est un UUID → deux clés peuvent porter le
+    /// même nom, distinguées par leur référence.
     @discardableResult
-    static func set(name: String, value: String, reference: String = "") -> Bool {
-        let account = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !account.isEmpty, !value.isEmpty else { return false }
-        // -U : met à jour si la clé existe déjà.
-        // -A : accessible par toutes les applications de l'utilisateur (pas de popup MCP).
-        // -j : commentaire = référence (libellé libre).
-        var args = [
-            "add-generic-password",
-            "-s", service,
-            "-a", account,
-            "-w", value,
-            "-U", "-A",
-        ]
-        let ref = reference.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !ref.isEmpty { args += ["-j", ref] }
-        let ok = runSecurity(args)
+    static func addAPIKey(name: String, reference: String, value: String) -> Bool {
+        let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty, !value.isEmpty else { return false }
+        let id = UUID().uuidString
+        // -A : lisible par le MCP sans popup. -j : métadonnées (nom + référence) en JSON.
+        let ok = runSecurity([
+            "add-generic-password", "-s", service, "-a", id,
+            "-w", value, "-U", "-A",
+            "-j", encodeMeta(name: n, reference: reference.trimmingCharacters(in: .whitespacesAndNewlines)),
+        ])
         exportIndex()
         return ok
     }
 
-    /// Met à jour uniquement la référence (commentaire) d'une clé existante,
-    /// sans avoir à ressaisir la valeur secrète.
+    /// Met à jour une clé par son id : nom, référence, et/ou valeur (valeur
+    /// inchangée si `newValue` est nil).
     @discardableResult
-    static func setReference(name: String, reference: String) -> Bool {
+    static func updateAPIKey(id: String, name: String, reference: String, newValue: String?) -> Bool {
+        let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !n.isEmpty else { return false }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: name,
+            kSecAttrAccount as String: id,
         ]
-        let attrs: [String: Any] = [
-            kSecAttrComment as String: reference.trimmingCharacters(in: .whitespacesAndNewlines),
+        var attrs: [String: Any] = [
+            kSecAttrComment as String: encodeMeta(
+                name: n, reference: reference.trimmingCharacters(in: .whitespacesAndNewlines)),
         ]
+        if let newValue, !newValue.isEmpty, let data = newValue.data(using: .utf8) {
+            attrs[kSecValueData as String] = data
+        }
         let ok = SecItemUpdate(query as CFDictionary, attrs as CFDictionary) == errSecSuccess
         exportIndex()
         return ok
@@ -79,11 +89,12 @@ enum KeychainService {
 
     // MARK: - Lecture
 
-    static func get(name: String) -> String? {
+    /// Valeur d'une clé par son id (à n'appeler qu'après authentification côté UI).
+    static func apiKeyValue(id: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: name,
+            kSecAttrAccount as String: id,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
         ]
@@ -96,23 +107,10 @@ enum KeychainService {
     // MARK: - Suppression
 
     @discardableResult
-    static func delete(name: String) -> Bool {
-        let ok = runSecurity(["delete-generic-password", "-s", service, "-a", name])
+    static func deleteAPIKey(id: String) -> Bool {
+        let ok = runSecurity(["delete-generic-password", "-s", service, "-a", id])
         exportIndex()
         return ok
-    }
-
-    /// Édite une clé API : renomme, change la référence et/ou la valeur.
-    /// La valeur est conservée si `newValue` est nil (déplacée en interne, jamais affichée).
-    @discardableResult
-    static func editAPIKey(oldName: String, newName: String, reference: String,
-                           newValue: String?) -> Bool {
-        let value = newValue ?? get(name: oldName) ?? ""
-        guard !value.isEmpty else { return false }
-        let newAccount = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !newAccount.isEmpty else { return false }
-        if oldName != newAccount { delete(name: oldName) }
-        return set(name: newAccount, value: value, reference: reference)
     }
 
     // MARK: - Enregistrements génériques (Email / Recovery / Database)
@@ -252,7 +250,7 @@ enum KeychainService {
     /// Écrit l'index des clés (noms + références, SANS les valeurs) pour que
     /// l'outil MCP list_api_keys puisse les présenter à Claude.
     static func exportIndex() {
-        let entries = listItems().map { ["name": $0.name, "reference": $0.reference] }
+        let entries = listItems().map { ["id": $0.id, "name": $0.name, "reference": $0.reference] }
         guard let data = try? JSONSerialization.data(
             withJSONObject: entries, options: [.prettyPrinted, .sortedKeys]) else { return }
         let dir = indexFileURL.deletingLastPathComponent()
@@ -280,10 +278,21 @@ enum KeychainService {
               let items = result as? [[String: Any]] else { return [] }
         return items
             .compactMap { attrs -> APIKey? in
-                guard let name = attrs[kSecAttrAccount as String] as? String else { return nil }
-                let ref = attrs[kSecAttrComment as String] as? String ?? ""
-                return APIKey(name: name, reference: ref)
+                guard let account = attrs[kSecAttrAccount as String] as? String else { return nil }
+                let comment = attrs[kSecAttrComment as String] as? String
+                // Nouveau schéma : commentaire = JSON { name, reference }, id = account (UUID).
+                if let comment, let data = comment.data(using: .utf8),
+                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let name = obj["name"] as? String {
+                    return APIKey(id: account, name: name, reference: obj["reference"] as? String ?? "")
+                }
+                // Ancien schéma : account = nom, commentaire = référence (texte simple).
+                return APIKey(id: account, name: account, reference: comment ?? "")
             }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            .sorted {
+                $0.name != $1.name
+                    ? $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                    : $0.reference.localizedStandardCompare($1.reference) == .orderedAscending
+            }
     }
 }

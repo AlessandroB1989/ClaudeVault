@@ -22,33 +22,24 @@ function run(cmd: string, args: string[]): Promise<string> {
 }
 
 /**
- * Récupère une clé API depuis le Keychain macOS.
- * Retourne la valeur en clair (vault local et personnel).
- * Lève une erreur claire si la clé est absente.
+ * Récupère la valeur d'une clé API par son COMPTE Keychain (id stable pour les
+ * nouvelles clés, ou nom pour l'ancien schéma). Retourne null si absente.
  */
-export async function getApiKey(keyName: string): Promise<string> {
-  if (!keyName || keyName.trim().length === 0) {
-    throw new Error("Nom de clé vide.");
-  }
+export async function fetchValueByAccount(account: string): Promise<string | null> {
+  if (!account || account.trim().length === 0) return null;
   try {
     const out = await run("security", [
       "find-generic-password",
       "-s",
       KEYCHAIN_SERVICE,
       "-a",
-      keyName,
+      account,
       "-w", // n'affiche que le mot de passe (la valeur)
     ]);
-    // `security -w` ajoute un retour à la ligne final.
-    return out.replace(/\n$/, "");
+    return out.replace(/\n$/, ""); // `security -w` ajoute un retour à la ligne final
   } catch (err) {
     const msg = (err as Error).message;
-    if (/could not be found|SecKeychainSearch/i.test(msg)) {
-      throw new Error(
-        `Clé API "${keyName}" introuvable dans le Keychain (service "${KEYCHAIN_SERVICE}"). ` +
-          `Ajoute-la depuis l'app ClaudeVault, onglet « Clés API ».`
-      );
-    }
-    throw new Error(`Lecture Keychain impossible pour "${keyName}" : ${msg}`);
+    if (/could not be found|SecKeychainSearch/i.test(msg)) return null;
+    throw new Error(`Lecture Keychain impossible (${account}) : ${msg}`);
   }
 }

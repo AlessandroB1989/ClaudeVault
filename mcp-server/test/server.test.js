@@ -277,3 +277,38 @@ test("get_api_key : clé présente dans le Keychain → valeur", async () => {
     ]);
   }
 });
+
+test("get_api_key : deux clés même nom → désambiguïsation par référence", async () => {
+  const idProd = "cvtest-uuid-prod";
+  const idDemo = "cvtest-uuid-demo";
+  // Index (écrit par l'app) : deux clés même nom, ids/réfs distincts.
+  await fs.writeFile(
+    join(vaultDir, "api-keys.json"),
+    JSON.stringify([
+      { id: idProd, name: "STRIPE_DUP", reference: "Prod" },
+      { id: idDemo, name: "STRIPE_DUP", reference: "Demo" },
+    ])
+  );
+  // Entrées Keychain correspondantes (compte = id).
+  for (const [id, secret] of [[idProd, "sk_prod"], [idDemo, "sk_demo"]]) {
+    execFileSync("security", ["add-generic-password", "-s", "ClaudeVault", "-a", id, "-w", secret, "-U", "-A"]);
+  }
+  try {
+    // Sans référence → ambigu.
+    const amb = await client.callTool({ name: "get_api_key", arguments: { keyName: "STRIPE_DUP" } });
+    assert.equal(amb.isError, true);
+    assert.match(textOf(amb), /Plusieurs clés/i);
+    assert.match(textOf(amb), /Prod/);
+    assert.match(textOf(amb), /Demo/);
+    // Avec référence → valeur exacte.
+    const demo = await client.callTool({ name: "get_api_key", arguments: { keyName: "STRIPE_DUP", reference: "Demo" } });
+    assert.equal(textOf(demo).trim(), "sk_demo");
+    const prod = await client.callTool({ name: "get_api_key", arguments: { keyName: "STRIPE_DUP", reference: "Prod" } });
+    assert.equal(textOf(prod).trim(), "sk_prod");
+  } finally {
+    for (const id of [idProd, idDemo]) {
+      execFileSync("security", ["delete-generic-password", "-s", "ClaudeVault", "-a", id]);
+    }
+    await fs.rm(join(vaultDir, "api-keys.json"), { force: true });
+  }
+});
